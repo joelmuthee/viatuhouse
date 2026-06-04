@@ -322,6 +322,17 @@ async function classifyPostWithVision(env, caption, imageUrl) {
     const imgRes = await fetch(imageUrl);
     if (!imgRes.ok) return { _debug: `img fetch ${imgRes.status}` };
     const imgBytes = new Uint8Array(await imgRes.arrayBuffer());
+    return await classifyImageBytes(env, caption, imgBytes);
+  } catch (err) {
+    return { _debug: `vision fetch throw: ${err.message}` };
+  }
+}
+
+// Vision core — takes raw image bytes, so callers holding KV image bytes don't
+// round-trip through a URL (a Worker can't fetch its own /img/ route — CF 1042).
+async function classifyImageBytes(env, caption, imgBytes) {
+  if (!env.AI || !imgBytes) return null;
+  try {
     const trimmed = (caption || "").replace(/\s+/g, " ").slice(0, 400);
     const prompt = `You sort Instagram posts from ViatuHouse Kids — a Nairobi shop selling BRAND-NEW kids shoes (boys + girls) and kids bags. You're given ONE photo + ONE caption. Decide:
 1. Is this a single product (one specific item or one stocked SKU) for sale? (is_product true|false)
@@ -365,6 +376,21 @@ Reply with strict minified JSON, no prose, no code fences:
         const m = cleaned.match(/\{[\s\S]*\}/);
         if (m) {
           try { parsed = JSON.parse(m[0]); } catch (_) {}
+        }
+        // Fallback: the vision model often ignores "JSON only" and returns
+        // markdown bullets ("* **category**: School Shoes"). Extract key:value.
+        if (!parsed) {
+          const grab = (k) => {
+            const mm = cleaned.match(new RegExp(`${k}["*\\s]*[:\\uFF1A]["*\\s]*([^\\n*]+)`, "i"));
+            return mm ? mm[1].replace(/[*_\`]/g, "").trim() : null;
+          };
+          const cat = grab("category");
+          if (cat) parsed = {
+            is_product: !/false/i.test(grab("is_product") || "true"),
+            name: grab("name"),
+            category: cat,
+            reason: (grab("reason") || "").slice(0, 60),
+          };
         }
       }
     }
