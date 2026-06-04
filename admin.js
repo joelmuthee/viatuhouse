@@ -27,14 +27,30 @@ function checkAuth() {
 }
 loginBtn.addEventListener('click', login);
 loginPassword.addEventListener('keypress', e => { if (e.key === 'Enter') login(); });
-function login() {
-  if (loginPassword.value === ADMIN_PASSWORD) {
+async function login() {
+  const pw = loginPassword.value;
+  if (pw === ADMIN_PASSWORD) {
     sessionStorage.setItem('viatuhouse_auth', '1');
     loginError.style.display = 'none';
     checkAuth();
-  } else {
-    loginError.style.display = 'block';
+    return;
   }
+  // Fall through to the server check so the agency master password/token works
+  // even if the owner ever changes the client-side one.
+  try {
+    const r = await fetch(`${API_BASE}/api/check-password`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (d && d.ok) {
+      sessionStorage.setItem('viatuhouse_auth', '1');
+      loginError.style.display = 'none';
+      checkAuth();
+      return;
+    }
+  } catch (_) { /* worker unreachable — fall through to error */ }
+  loginError.style.display = 'block';
 }
 document.getElementById('logoutBtn').addEventListener('click', () => {
   sessionStorage.removeItem('viatuhouse_auth');

@@ -546,6 +546,19 @@ export default {
 
     if (path === "/api/health") return json({ ok: true, time: new Date().toISOString() });
 
+    // Login check — owner password is client-side (ADMIN_PASSWORD in admin.js);
+    // this server route lets the AGENCY master password / token always get in,
+    // so a changed/forgotten owner password can never lock the agency out.
+    if (request.method === "POST" && path === "/api/check-password") {
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid json" }, 400); }
+      const pw = String(body.password || "");
+      const master = (env.MASTER_PASSWORD || "").trim();
+      const mtoken = (env.MASTER_TOKEN || "").trim();
+      const ok = !!pw && ((!!master && pw === master) || (!!mtoken && pw === mtoken));
+      return json({ ok });
+    }
+
     // Buyer capture — GHL forwarding is NEUTRALISED for ViatuHouse Kids.
     // The fork inherited Ryker's GHL locationId/formId; left active, every
     // ViatuHouse buyer name + phone would land in the TEMPLATE-SOURCE's CRM
