@@ -57,8 +57,8 @@ const decodeEntities = (s) => (s || "")
 // types, then generic "shoes" last as the footwear catch-all.
 const KIDS_BRANDS = [
   // Known kids brands seen in the feed / Nairobi market
-  ["crabkids",         "Crabkids",           "Sneakers"],
-  ["crab kids",        "Crabkids",           "Sneakers"],
+  ["crabkids",         "Crabkids",           "School Shoes"],
+  ["crab kids",        "Crabkids",           "School Shoes"],
   ["crocs",            "Crocs",              "Crocs"],
   ["nike",             "Nike",               "Sneakers"],
   ["adidas",           "Adidas",             "Sneakers"],
