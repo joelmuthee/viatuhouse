@@ -1987,7 +1987,7 @@ function buildBroadcastMessage(recipientName) {
     : '';
   const lookUrl = 'https://viatuhouse.essenceautomations.com';
   const greet = recipientName ? `Hi ${recipientName.split(' ')[0]}! ` : 'Hi! ';
-  return `${greet}It's ViatuHouse Kids. ${subject || 'Fresh kids shoes and bags just landed'}.${itemsBlock}\n\nTap to browse: ${lookUrl}\n\nReply here to ask about anything. 🧡`;
+  return `${greet}It's ViatuHouse Kids. ${subject || 'Fresh kids shoes and bags just landed'}.${itemsBlock}\n\nTap to browse: ${lookUrl}\n\nViatuHouse Kids 🧡`;
 }
 
 function renderBroadcastPreview() {
