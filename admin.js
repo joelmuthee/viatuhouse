@@ -29,32 +29,67 @@ loginBtn.addEventListener('click', login);
 loginPassword.addEventListener('keypress', e => { if (e.key === 'Enter') login(); });
 async function login() {
   const pw = loginPassword.value;
-  if (pw === ADMIN_PASSWORD) {
-    sessionStorage.setItem('viatuhouse_auth', '1');
-    loginError.style.display = 'none';
-    checkAuth();
-    return;
-  }
-  // Fall through to the server check so the agency master password/token works
-  // even if the owner ever changes the client-side one.
+  loginError.style.display = 'none';
   try {
-    const r = await fetch(`${API_BASE}/api/check-password`, {
+    const res = await fetch(`${API_BASE}/api/check-password`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pw }),
+      body: JSON.stringify({ password: pw })
     });
-    const d = await r.json().catch(() => ({}));
-    if (d && d.ok) {
-      sessionStorage.setItem('viatuhouse_auth', '1');
-      loginError.style.display = 'none';
-      checkAuth();
-      return;
-    }
-  } catch (_) { /* worker unreachable — fall through to error */ }
-  loginError.style.display = 'block';
+    const j = await res.json();
+    if (j.ok) { sessionStorage.setItem('viatuhouse_auth', '1'); checkAuth(); }
+    else { loginError.style.display = 'block'; }
+  } catch (e) {
+    if (pw === ADMIN_PASSWORD) { sessionStorage.setItem('viatuhouse_auth', '1'); checkAuth(); }
+    else { loginError.style.display = 'block'; }
+  }
 }
 document.getElementById('logoutBtn').addEventListener('click', () => {
   sessionStorage.removeItem('viatuhouse_auth');
   location.reload();
+});
+
+// ====== CHANGE PASSWORD ======
+document.getElementById('changePasswordBtn')?.addEventListener('click', () => {
+  const m = document.getElementById('changePasswordModal');
+  if (!m) return;
+  m.style.display = 'flex';
+  ['cpCurrent','cpNew','cpConfirm'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('cpError').style.display = 'none';
+  document.getElementById('cpCurrent')?.focus();
+});
+function _closeChangePassword() { const m = document.getElementById('changePasswordModal'); if (m) m.style.display = 'none'; }
+document.getElementById('cpCancelBtn')?.addEventListener('click', _closeChangePassword);
+document.getElementById('changePasswordModal')?.addEventListener('click', e => { if (e.target.id === 'changePasswordModal') _closeChangePassword(); });
+document.getElementById('cpSaveBtn')?.addEventListener('click', async () => {
+  const cur = document.getElementById('cpCurrent').value;
+  const nw  = document.getElementById('cpNew').value;
+  const cf  = document.getElementById('cpConfirm').value;
+  const err = document.getElementById('cpError');
+  err.style.display = 'none';
+  if (!cur) { err.textContent = 'Enter your current password.'; err.style.display = 'block'; return; }
+  if (nw.length < 8) { err.textContent = 'New password must be at least 8 characters.'; err.style.display = 'block'; return; }
+  if (nw !== cf) { err.textContent = 'New password and confirmation do not match.'; err.style.display = 'block'; return; }
+  const btn = document.getElementById('cpSaveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const res = await fetch(`${API_BASE}/api/set-password`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ current: cur, next: nw })
+    });
+    const j = await res.json();
+    if (j.ok) {
+      _closeChangePassword();
+      showToast('Password changed. You stay signed in; the new password takes effect on next login.');
+    } else {
+      err.textContent = j.error || 'Could not change password.';
+      err.style.display = 'block';
+    }
+  } catch (e) {
+    err.textContent = 'Network error: ' + (e.message || e);
+    err.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Change password';
+  }
 });
 
 // ====== API ======
